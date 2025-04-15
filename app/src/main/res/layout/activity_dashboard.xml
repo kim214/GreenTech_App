@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".DashboardActivity">
+
+    <!-- Title Section -->
+    <TextView
+        android:id="@+id/titleText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="GreenTech Systems"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="16dp"/>
+
+    <TextView
+        android:id="@+id/descriptionText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Smart Farming for a Sustainable Future"
+        android:textSize="16sp"
+        android:textColor="#777"
+        app:layout_constraintTop_toBottomOf="@id/titleText"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"/>
+
+    <!-- Tabs Section -->
+    <LinearLayout
+        android:id="@+id/tabs"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="3"
+        app:layout_constraintTop_toBottomOf="@id/descriptionText"
+        app:layout_constraintStart_toStartOf="parent"
+        android:paddingTop="16dp">
+
+        <Button
+            android:id="@+id/liveMonitoringTab"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Live Monitoring"
+            android:layout_weight="1"
+            android:onClick="openTab" />
+
+        <Button
+            android:id="@+id/irrigationTab"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Irrigation"
+            android:layout_weight="1"
+            android:onClick="openTab" />
+
+        <Button
+            android:id="@+id/ventilationTab"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Ventilation"
+            android:layout_weight="1"
+            android:onClick="openTab" />
+    </LinearLayout>
+
+    <!-- Live Monitoring Section -->
+    <LinearLayout
+        android:id="@+id/monitoringSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="visible"
+        app:layout_constraintTop_toBottomOf="@id/tabs"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/tempText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🌡 Temperature: -- °C" />
+
+        <TextView
+            android:id="@+id/moistureText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="💧 Soil Moisture: -- %" />
+
+        <TextView
+            android:id="@+id/phText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🌿 Soil pH: --" />
+
+        <TextView
+            android:id="@+id/humidityText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="💦 Humidity: -- %" />
+    </LinearLayout>
+
+    <!-- Irrigation Section -->
+    <LinearLayout
+        android:id="@+id/irrigationSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/tabs"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/irrigationStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Irrigation Status: OFF" />
+
+        <Button
+            android:id="@+id/startIrrigationButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Start Irrigation"
+            android:onClick="startIrrigation"
+            tools:ignore="OnClick" />
+
+        <Button
+            android:id="@+id/stopIrrigationButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Stop Irrigation"
+            android:visibility="gone"
+            android:onClick="stopIrrigation"
+            tools:ignore="OnClick" />
+
+        <TextView
+            android:id="@+id/autoIrrigationStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Auto-Irrigation: OFF"
+            android:textColor="#FF0000"/>
+    </LinearLayout>
+
+    <!-- Ventilation Section -->
+    <LinearLayout
+        android:id="@+id/ventilationSection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/tabs"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/ventilationStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ventilation Status: OFF" />
+
+        <Button
+            android:id="@+id/openVentilationButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Open Fan"
+            android:onClick="openVentilation"
+            tools:ignore="OnClick" />
+
+        <Button
+            android:id="@+id/closeVentilationButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Close Fan"
+            android:visibility="gone"
+            android:onClick="closeVentilation" />
+
+        <TextView
+            android:id="@+id/autoVentilationStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Auto-Ventilation: OFF"
+            android:textColor="#FF0000"/>
+    </LinearLayout>
+
+    <!-- Logout Button -->
+    <Button
+        android:id="@+id/logoutButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Logout"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="16dp"
+        android:onClick="logout"
+        tools:ignore="OnClick" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
