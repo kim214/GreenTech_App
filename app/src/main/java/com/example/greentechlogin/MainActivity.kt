@@ -1,104 +1,47 @@
 package com.example.greentechlogin
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.unit.dp
-import com.example.greentechlogin.ui.theme.GreenTechLoginTheme
+import androidx.appcompat.app.AppCompatActivity
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            GreenTechLoginTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    LoginScreen()
+        setContentView(R.layout.activity_main) // Ensure this matches your XML filename (e.g., activity_main.xml)
+
+        val emailInput = findViewById<EditText>(R.id.emailInput)
+        val passwordInput = findViewById<EditText>(R.id.passwordInput)
+        val loginBtn = findViewById<Button>(R.id.loginBtn)
+        val signupLink = findViewById<TextView>(R.id.signupLink)
+
+        loginBtn.setOnClickListener {
+            val email = emailInput.text.toString().trim()
+            val password = passwordInput.text.toString().trim()
+
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+            } else {
+                val prefs = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+                val registeredEmail = prefs.getString("email", null)
+                val registeredPassword = prefs.getString("password", null)
+
+                if (email == registeredEmail && password == registeredPassword) {
+                    Toast.makeText(this, "Login successful", Toast.LENGTH_SHORT).show()
+                    startActivity(Intent(this, DashboardActivity::class.java))
+                    finish()
+                } else {
+                    Toast.makeText(this, "Invalid credentials or account doesn't exist", Toast.LENGTH_SHORT).show()
                 }
             }
         }
-    }
-}
 
-@Composable
-fun LoginScreen() {
-    val context = LocalContext.current
-
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            visualTransformation = PasswordVisualTransformation(),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Button(
-            onClick = {
-                if (email.isEmpty() || password.isEmpty()) {
-                    Toast.makeText(context, "Please fill all fields", Toast.LENGTH_SHORT).show()
-                } else {
-                    // For now, let's assume the login is successful if fields are not empty
-                    // You should replace this with actual validation or an API call
-                    Toast.makeText(context, "Logging in...", Toast.LENGTH_SHORT).show()
-
-                    // Navigate to the DashboardActivity
-                    val intent = Intent(context, DashboardActivity::class.java)
-                    context.startActivity(intent)
-
-                    // Optional: Finish the current activity so the user can't go back to the login screen
-                    (context as? ComponentActivity)?.finish()
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Login")
+        signupLink.setOnClickListener {
+            startActivity(Intent(this, SignupActivity::class.java))
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Don't have an account? Sign up",
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier
-                .clickable {
-                    // Navigate to SignupActivity
-                    val intent = Intent(context, SignupActivity::class.java)
-                    context.startActivity(intent)
-                }
-        )
     }
 }
