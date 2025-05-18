@@ -3,17 +3,27 @@ package com.example.greentechlogin
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.greentechlogin.databinding.ActivityDashboardBinding
+import org.eclipse.paho.client.mqttv3.MqttClient
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 class DashboardActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDashboardBinding
 
-    // Manual override flags
+    private lateinit var mqttClient: MqttClient
+    private val mqttBrokerUrl = "tcp://192.168.63.124:1883"
+    private val irrigationTopic = "greenhouse/irrigation"
+    private val ventilationTopic = "greenhouse/ventilation"
+    private var isMqttConnected = false
+
     private var manualIrrigation = false
     private var manualVentilation = false
 
@@ -22,47 +32,50 @@ class DashboardActivity : AppCompatActivity() {
         binding = ActivityDashboardBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Default section
-        showMonitoringSection()
-        highlightSelectedTab(binding.btnLiveMonitoring) // Highlight Live Monitoring tab by default
+        initializeMqttClient()
 
-        // Tab clicks
+        showMonitoringSection()
+        highlightSelectedTab(binding.btnLiveMonitoring)
+
         binding.btnLiveMonitoring.setOnClickListener {
             showMonitoringSection()
             highlightSelectedTab(binding.btnLiveMonitoring)
         }
+
         binding.btnIrrigation.setOnClickListener {
             showIrrigationSection()
             highlightSelectedTab(binding.btnIrrigation)
         }
+
         binding.btnVentilation.setOnClickListener {
             showVentilationSection()
             highlightSelectedTab(binding.btnVentilation)
         }
 
-        // Irrigation manual controls
         binding.startIrrigationButton.setOnClickListener {
             manualIrrigation = true
-            startIrrigation(auto = false)
+            startIrrigation(false)
+            sendMessage(irrigationTopic, "ON")
         }
 
         binding.stopIrrigationButton.setOnClickListener {
             manualIrrigation = true
-            stopIrrigation(auto = false)
+            stopIrrigation(false)
+            sendMessage(irrigationTopic, "OFF")
         }
 
-        // Ventilation manual controls
         binding.openVentilationButton.setOnClickListener {
             manualVentilation = true
-            openVentilation(auto = false)
+            openVentilation(false)
+            sendMessage(ventilationTopic, "OPEN")
         }
 
         binding.closeVentilationButton.setOnClickListener {
             manualVentilation = true
-            closeVentilation(auto = false)
+            closeVentilation(false)
+            sendMessage(ventilationTopic, "CLOSE")
         }
 
-        // Logout button
         binding.btnLogout.setOnClickListener {
             Toast.makeText(this, "Logging out...", Toast.LENGTH_SHORT).show()
             val intent = Intent(this, MainActivity::class.java)
@@ -72,7 +85,51 @@ class DashboardActivity : AppCompatActivity() {
         }
     }
 
-    // Section toggles
+    private fun initializeMqttClient() {
+        val clientId = "AndroidClient_" + System.currentTimeMillis()
+
+        Thread {
+            try {
+                mqttClient = MqttClient(
+                    mqttBrokerUrl,
+                    clientId,
+                    MemoryPersistence()
+                )
+                val options = MqttConnectOptions().apply {
+                    isCleanSession = true
+                }
+                mqttClient.connect(options)
+                isMqttConnected = true
+                runOnUiThread {
+                    Toast.makeText(this, "Connected to MQTT broker", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Log.e("MQTT", "MQTT Exception: ${e.message}")
+                isMqttConnected = false
+                runOnUiThread {
+                    Toast.makeText(this, "MQTT setup error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }.start()
+    }
+
+    private fun sendMessage(topic: String, message: String) {
+        if (isMqttConnected) {
+            try {
+                val mqttMessage = MqttMessage(message.toByteArray()).apply {
+                    qos = 1
+                }
+                mqttClient.publish(topic, mqttMessage)
+                Log.d("MQTT", "Message sent to $topic: $message")
+            } catch (e: Exception) {
+                Log.e("MQTT", "Error publishing: ${e.message}")
+                Toast.makeText(this, "Error sending message: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(this, "MQTT not connected", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun showMonitoringSection() {
         binding.liveMonitoringSection.visibility = View.VISIBLE
         binding.irrigationControls.visibility = View.GONE
@@ -91,21 +148,19 @@ class DashboardActivity : AppCompatActivity() {
         binding.ventilationControls.visibility = View.VISIBLE
     }
 
-    // Helper function to highlight the selected tab
     private fun highlightSelectedTab(selected: Button) {
         val buttons = listOf(binding.btnLiveMonitoring, binding.btnIrrigation, binding.btnVentilation)
-        for (button in buttons) {
-            if (button == selected) {
-                button.setBackgroundColor(ContextCompat.getColor(this, R.color.teal_700)) // Highlight selected tab
-                button.setTextColor(Color.WHITE)
+        buttons.forEach {
+            if (it == selected) {
+                it.setBackgroundColor(ContextCompat.getColor(this, R.color.teal_700))
+                it.setTextColor(Color.WHITE)
             } else {
-                button.setBackgroundColor(ContextCompat.getColor(this, R.color.light_gray)) // Neutral color for others
-                button.setTextColor(Color.BLACK)
+                it.setBackgroundColor(ContextCompat.getColor(this, R.color.light_gray))
+                it.setTextColor(Color.BLACK)
             }
         }
     }
 
-    // Irrigation logic
     private fun startIrrigation(auto: Boolean) {
         binding.irrigationStatus.text = "Irrigation Status: ON"
         binding.startIrrigationButton.visibility = View.GONE
@@ -122,7 +177,6 @@ class DashboardActivity : AppCompatActivity() {
         if (!auto) Toast.makeText(this, "Irrigation stopped", Toast.LENGTH_SHORT).show()
     }
 
-    // Ventilation logic
     private fun openVentilation(auto: Boolean) {
         binding.ventilationStatus.text = "Ventilation Status: OPEN"
         binding.openVentilationButton.visibility = View.GONE
@@ -137,5 +191,14 @@ class DashboardActivity : AppCompatActivity() {
         binding.closeVentilationButton.visibility = View.GONE
         binding.autoVentilationStatus.text = if (auto) "Auto-Ventilation: ON" else "Auto-Ventilation: OFF"
         if (!auto) Toast.makeText(this, "Ventilation closed", Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        try {
+            if (isMqttConnected) mqttClient.disconnect()
+        } catch (e: Exception) {
+            Log.e("MQTT", "Error disconnecting: ${e.message}")
+        }
     }
 }
