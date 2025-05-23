@@ -10,6 +10,8 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.example.greentechlogin.databinding.ActivityDashboardBinding
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
+import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
@@ -19,13 +21,20 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDashboardBinding
 
     private lateinit var mqttClient: MqttClient
-    private val mqttBrokerUrl = "tcp://192.168.63.124:1883"
+    private val mqttBrokerUrl = "tcp://192.168.89.124:1883"
+
+    private val temperatureTopic = "greenhouse/temperature"
+    private val soilMoistureTopic = "greenhouse/soilMoisture"
+    private val soilPhTopic = "greenhouse/soilPH"
+    private val humidityTopic = "greenhouse/humidity"
     private val irrigationTopic = "greenhouse/irrigation"
     private val ventilationTopic = "greenhouse/ventilation"
-    private var isMqttConnected = false
+    private val modeTopic = "greenhouse/mode"
 
+    private var isMqttConnected = false
     private var manualIrrigation = false
     private var manualVentilation = false
+    private var isAutoMode = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,6 +46,7 @@ class DashboardActivity : AppCompatActivity() {
         showMonitoringSection()
         highlightSelectedTab(binding.btnLiveMonitoring)
 
+        // Tabs
         binding.btnLiveMonitoring.setOnClickListener {
             showMonitoringSection()
             highlightSelectedTab(binding.btnLiveMonitoring)
@@ -52,6 +62,7 @@ class DashboardActivity : AppCompatActivity() {
             highlightSelectedTab(binding.btnVentilation)
         }
 
+        // Manual Controls
         binding.startIrrigationButton.setOnClickListener {
             manualIrrigation = true
             startIrrigation(false)
@@ -76,8 +87,21 @@ class DashboardActivity : AppCompatActivity() {
             sendMessage(ventilationTopic, "CLOSE")
         }
 
+        // Mode Switch
+        binding.btnAutoMode.setOnClickListener {
+            sendMessage(modeTopic, "AUTO")
+            isAutoMode = true
+            updateModeUI()
+        }
+
+        binding.btnManualMode.setOnClickListener {
+            sendMessage(modeTopic, "MANUAL")
+            isAutoMode = false
+            updateModeUI()
+        }
+
+        // Logout
         binding.btnLogout.setOnClickListener {
-            Toast.makeText(this, "Logging out...", Toast.LENGTH_SHORT).show()
             val intent = Intent(this, MainActivity::class.java)
             intent.flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(intent)
@@ -87,22 +111,50 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun initializeMqttClient() {
         val clientId = "AndroidClient_" + System.currentTimeMillis()
-
         Thread {
             try {
-                mqttClient = MqttClient(
-                    mqttBrokerUrl,
-                    clientId,
-                    MemoryPersistence()
-                )
-                val options = MqttConnectOptions().apply {
-                    isCleanSession = true
-                }
+                mqttClient = MqttClient(mqttBrokerUrl, clientId, MemoryPersistence())
+                val options = MqttConnectOptions().apply { isCleanSession = true }
+
+                mqttClient.setCallback(object : MqttCallback {
+                    override fun connectionLost(cause: Throwable?) {
+                        isMqttConnected = false
+                        runOnUiThread {
+                            Toast.makeText(this@DashboardActivity, "MQTT connection lost", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                    override fun messageArrived(topic: String?, message: MqttMessage?) {
+                        runOnUiThread {
+                            val payload = message.toString()
+                            when (topic) {
+                                temperatureTopic -> binding.Temperature.text = "Temperature: $payload °C"
+                                soilMoistureTopic -> binding.SoilMoisture.text = "Soil Moisture: $payload %"
+                                soilPhTopic -> binding.SoilPh.text = "Soil pH: $payload"
+                                humidityTopic -> binding.Humidity.text = "Humidity: $payload %"
+                                modeTopic -> {
+                                    isAutoMode = payload == "AUTO"
+                                    updateModeUI()
+                                }
+                            }
+                        }
+                    }
+
+                    override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+                })
+
                 mqttClient.connect(options)
                 isMqttConnected = true
                 runOnUiThread {
                     Toast.makeText(this, "Connected to MQTT broker", Toast.LENGTH_SHORT).show()
                 }
+
+                mqttClient.subscribe(temperatureTopic, 1)
+                mqttClient.subscribe(soilMoistureTopic, 1)
+                mqttClient.subscribe(soilPhTopic, 1)
+                mqttClient.subscribe(humidityTopic, 1)
+                mqttClient.subscribe(modeTopic, 1)
+
             } catch (e: Exception) {
                 Log.e("MQTT", "MQTT Exception: ${e.message}")
                 isMqttConnected = false
@@ -116,17 +168,28 @@ class DashboardActivity : AppCompatActivity() {
     private fun sendMessage(topic: String, message: String) {
         if (isMqttConnected) {
             try {
-                val mqttMessage = MqttMessage(message.toByteArray()).apply {
-                    qos = 1
-                }
+                val mqttMessage = MqttMessage(message.toByteArray()).apply { qos = 1 }
                 mqttClient.publish(topic, mqttMessage)
                 Log.d("MQTT", "Message sent to $topic: $message")
             } catch (e: Exception) {
                 Log.e("MQTT", "Error publishing: ${e.message}")
-                Toast.makeText(this, "Error sending message: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private fun updateModeUI() {
+        if (isAutoMode) {
+            binding.modeStatus.text = "Current Mode: AUTO"
+            binding.startIrrigationButton.isEnabled = false
+            binding.stopIrrigationButton.isEnabled = false
+            binding.openVentilationButton.isEnabled = false
+            binding.closeVentilationButton.isEnabled = false
         } else {
-            Toast.makeText(this, "MQTT not connected", Toast.LENGTH_SHORT).show()
+            binding.modeStatus.text = "Current Mode: MANUAL"
+            binding.startIrrigationButton.isEnabled = true
+            binding.stopIrrigationButton.isEnabled = true
+            binding.openVentilationButton.isEnabled = true
+            binding.closeVentilationButton.isEnabled = true
         }
     }
 
@@ -166,7 +229,6 @@ class DashboardActivity : AppCompatActivity() {
         binding.startIrrigationButton.visibility = View.GONE
         binding.stopIrrigationButton.visibility = View.VISIBLE
         binding.autoIrrigationStatus.text = if (auto) "Auto-Irrigation: ON" else "Auto-Irrigation: OFF"
-        if (!auto) Toast.makeText(this, "Irrigation started", Toast.LENGTH_SHORT).show()
     }
 
     private fun stopIrrigation(auto: Boolean) {
@@ -174,7 +236,6 @@ class DashboardActivity : AppCompatActivity() {
         binding.startIrrigationButton.visibility = View.VISIBLE
         binding.stopIrrigationButton.visibility = View.GONE
         binding.autoIrrigationStatus.text = if (auto) "Auto-Irrigation: ON" else "Auto-Irrigation: OFF"
-        if (!auto) Toast.makeText(this, "Irrigation stopped", Toast.LENGTH_SHORT).show()
     }
 
     private fun openVentilation(auto: Boolean) {
@@ -182,7 +243,6 @@ class DashboardActivity : AppCompatActivity() {
         binding.openVentilationButton.visibility = View.GONE
         binding.closeVentilationButton.visibility = View.VISIBLE
         binding.autoVentilationStatus.text = if (auto) "Auto-Ventilation: ON" else "Auto-Ventilation: OFF"
-        if (!auto) Toast.makeText(this, "Ventilation opened", Toast.LENGTH_SHORT).show()
     }
 
     private fun closeVentilation(auto: Boolean) {
@@ -190,7 +250,6 @@ class DashboardActivity : AppCompatActivity() {
         binding.openVentilationButton.visibility = View.VISIBLE
         binding.closeVentilationButton.visibility = View.GONE
         binding.autoVentilationStatus.text = if (auto) "Auto-Ventilation: ON" else "Auto-Ventilation: OFF"
-        if (!auto) Toast.makeText(this, "Ventilation closed", Toast.LENGTH_SHORT).show()
     }
 
     override fun onDestroy() {
