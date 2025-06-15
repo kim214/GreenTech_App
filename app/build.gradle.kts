@@ -76,6 +76,11 @@ dependencies {
 
     implementation ("com.google.android.material:material:1.11.0")
 
+    implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation ("com.squareup.okhttp3:okhttp:4.9.1")
+
+
 
     // Testing
     testImplementation(libs.junit)
@@ -88,4 +93,9 @@ dependencies {
 
     // Include missing dependencies
     implementation(libs.kotlin.stdlib)
+
+
+    implementation ("com.airbnb.android:lottie:6.4.0") // or latest version
+
+
 }

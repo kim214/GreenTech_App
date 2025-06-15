@@ -1,23 +1,41 @@
 package com.example.greentechlogin
 
-import android.content.Context
+import SupabaseClient
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var emailInput: EditText
+    private lateinit var passwordInput: EditText
+    private lateinit var loginBtn: Button
+    private lateinit var signupLink: TextView
+    private lateinit var forgotPasswordLink: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main) // Ensure this matches your XML filename (e.g., activity_main.xml)
+        setContentView(R.layout.activity_main)
 
-        val emailInput = findViewById<EditText>(R.id.emailInput)
-        val passwordInput = findViewById<EditText>(R.id.passwordInput)
-        val loginBtn = findViewById<Button>(R.id.loginBtn)
-        val signupLink = findViewById<TextView>(R.id.signupLink)
+        // ✅ Check if launched via deep link
+        intent?.data?.let { uri ->
+            Log.d("DeepLink", "App opened via deep link: $uri")
+            // You can also pre-fill email or add custom behavior here if needed
+        }
+
+        emailInput = findViewById(R.id.emailInput)
+        passwordInput = findViewById(R.id.passwordInput)
+        loginBtn = findViewById(R.id.loginBtn)
+        signupLink = findViewById(R.id.signupLink)
+        forgotPasswordLink = findViewById(R.id.forgotPasswordLink)
 
         loginBtn.setOnClickListener {
             val email = emailInput.text.toString().trim()
@@ -25,23 +43,42 @@ class MainActivity : AppCompatActivity() {
 
             if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
-            } else {
-                val prefs = getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
-                val registeredEmail = prefs.getString("email", null)
-                val registeredPassword = prefs.getString("password", null)
-
-                if (email == registeredEmail && password == registeredPassword) {
-                    Toast.makeText(this, "Login successful", Toast.LENGTH_SHORT).show()
-                    startActivity(Intent(this, DashboardActivity::class.java))
-                    finish()
-                } else {
-                    Toast.makeText(this, "Invalid credentials or account doesn't exist", Toast.LENGTH_SHORT).show()
-                }
+                return@setOnClickListener
             }
+
+            val supabaseService = SupabaseClient.authService
+            val call = supabaseService.login(AuthRequest(email, password))
+
+            call.enqueue(object : Callback<AuthResponse> {
+                override fun onResponse(call: Call<AuthResponse>, response: Response<AuthResponse>) {
+                    if (response.isSuccessful) {
+                        Toast.makeText(this@MainActivity, "Login successful!", Toast.LENGTH_SHORT).show()
+
+                        val token = response.body()?.access_token
+                        if (token != null) {
+                            val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
+                            prefs.edit().putString("access_token", token).apply()
+                        }
+
+                        startActivity(Intent(this@MainActivity, DashboardActivity::class.java))
+                        finish()
+                    } else {
+                        Toast.makeText(this@MainActivity, "Login failed: ${response.errorBody()?.string()}", Toast.LENGTH_LONG).show()
+                    }
+                }
+
+                override fun onFailure(call: Call<AuthResponse>, t: Throwable) {
+                    Toast.makeText(this@MainActivity, "Login error: ${t.localizedMessage}", Toast.LENGTH_LONG).show()
+                }
+            })
         }
 
         signupLink.setOnClickListener {
             startActivity(Intent(this, SignupActivity::class.java))
+        }
+
+        forgotPasswordLink.setOnClickListener {
+            startActivity(Intent(this, ResetPasswordActivity::class.java))
         }
     }
 }

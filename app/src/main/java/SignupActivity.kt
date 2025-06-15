@@ -1,10 +1,24 @@
 package com.example.greentechlogin
 
+import SupabaseClient
 import android.content.Intent
 import android.os.Bundle
 import android.util.Patterns
-import android.widget.*
+import android.view.View
+import android.widget.Button
+import android.widget.EditText
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.airbnb.lottie.LottieAnimationView
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+
+// Data classes for the API request and response
+data class AuthRequest(val email: String, val password: String)
+data class UserResponse(val id: String, val email: String?)
+data class AuthResponse(val access_token: String?, val user: UserResponse?)
 
 class SignupActivity : AppCompatActivity() {
 
@@ -14,6 +28,7 @@ class SignupActivity : AppCompatActivity() {
     private lateinit var confirmPasswordInput: EditText
     private lateinit var signupBtn: Button
     private lateinit var loginLink: TextView
+    private lateinit var successAnim: LottieAnimationView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,6 +41,7 @@ class SignupActivity : AppCompatActivity() {
         confirmPasswordInput = findViewById(R.id.confirmPasswordInput)
         signupBtn = findViewById(R.id.signupBtn)
         loginLink = findViewById(R.id.loginLink)
+        successAnim = findViewById(R.id.successAnim)
 
         signupBtn.setOnClickListener {
             val name = nameInput.text.toString().trim()
@@ -54,25 +70,49 @@ class SignupActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Save user data using SharedPreferences
-            val sharedPrefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
-            val editor = sharedPrefs.edit()
-            editor.putString("name", name)
-            editor.putString("email", email)
-            editor.putString("password", password)
-            editor.apply()
+            // Call Supabase signup API
+            val supabaseService = SupabaseClient.authService
+            val call = supabaseService.signup(AuthRequest(email, password))
 
-            Toast.makeText(this, "Signup successful!", Toast.LENGTH_SHORT).show()
+            call.enqueue(object : Callback<AuthResponse> {
+                override fun onResponse(call: Call<AuthResponse>, response: Response<AuthResponse>) {
+                    if (response.isSuccessful) {
+                        // Show success animation
+                        successAnim.visibility = View.VISIBLE
+                        successAnim.playAnimation()
 
-            // Go to login screen
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
-            finish()
+                        Toast.makeText(
+                            this@SignupActivity,
+                            "Signup successful! Please check your email to confirm your account before logging in.",
+                            Toast.LENGTH_LONG
+                        ).show()
+
+                        // Delay to let animation play before switching screen
+                        successAnim.postDelayed({
+                            startActivity(Intent(this@SignupActivity, MainActivity::class.java))
+                            finish()
+                        }, 2000) // 2 seconds
+                    } else {
+                        Toast.makeText(
+                            this@SignupActivity,
+                            "Signup failed: ${response.errorBody()?.string()}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+
+                override fun onFailure(call: Call<AuthResponse>, t: Throwable) {
+                    Toast.makeText(
+                        this@SignupActivity,
+                        "Signup error: ${t.localizedMessage}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            })
         }
 
         loginLink.setOnClickListener {
-            finish() // Go back to login
+            finish() // Go back to login screen
         }
     }
 }
-

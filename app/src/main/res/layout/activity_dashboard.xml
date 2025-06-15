@@ -120,14 +120,7 @@
                     android:textColor="#00BFFF"
                     android:layout_marginBottom="8dp" />
 
-                <TextView
-                    android:id="@+id/SoilPh"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="🌿 Soil pH: --"
-                    android:textSize="16sp"
-                    android:textColor="#32CD32"
-                    android:layout_marginBottom="8dp" />
+
 
                 <TextView
                     android:id="@+id/Humidity"

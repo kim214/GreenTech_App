@@ -21,11 +21,10 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDashboardBinding
 
     private lateinit var mqttClient: MqttClient
-    private val mqttBrokerUrl = "tcp://192.168.89.124:1883"
+    private val mqttBrokerUrl = "tcp://192.168.209.124:1883"
 
     private val temperatureTopic = "greenhouse/temperature"
-    private val soilMoistureTopic = "greenhouse/soilMoisture"
-    private val soilPhTopic = "greenhouse/soilPH"
+    private val soilMoistureTopic = "greenhouse/soilMoisturePercent" // Updated topic
     private val humidityTopic = "greenhouse/humidity"
     private val irrigationTopic = "greenhouse/irrigation"
     private val ventilationTopic = "greenhouse/ventilation"
@@ -129,8 +128,7 @@ class DashboardActivity : AppCompatActivity() {
                             val payload = message.toString()
                             when (topic) {
                                 temperatureTopic -> binding.Temperature.text = "Temperature: $payload °C"
-                                soilMoistureTopic -> binding.SoilMoisture.text = "Soil Moisture: $payload %"
-                                soilPhTopic -> binding.SoilPh.text = "Soil pH: $payload"
+                                soilMoistureTopic -> binding.SoilMoisture.text = "Soil Moisture: $payload %" // Updated to new topic
                                 humidityTopic -> binding.Humidity.text = "Humidity: $payload %"
                                 modeTopic -> {
                                     isAutoMode = payload == "AUTO"
@@ -150,8 +148,7 @@ class DashboardActivity : AppCompatActivity() {
                 }
 
                 mqttClient.subscribe(temperatureTopic, 1)
-                mqttClient.subscribe(soilMoistureTopic, 1)
-                mqttClient.subscribe(soilPhTopic, 1)
+                mqttClient.subscribe(soilMoistureTopic, 1) // Updated to new topic
                 mqttClient.subscribe(humidityTopic, 1)
                 mqttClient.subscribe(modeTopic, 1)
 
