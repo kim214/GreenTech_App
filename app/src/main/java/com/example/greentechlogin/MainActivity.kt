@@ -73,9 +73,6 @@ class MainActivity : AppCompatActivity() {
             })
         }
 
-        signupLink.setOnClickListener {
-            startActivity(Intent(this, SignupActivity::class.java))
-        }
 
         forgotPasswordLink.setOnClickListener {
             startActivity(Intent(this, ResetPasswordActivity::class.java))
