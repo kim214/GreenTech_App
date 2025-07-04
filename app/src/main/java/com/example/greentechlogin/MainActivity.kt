@@ -19,7 +19,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var passwordInput: EditText
     private lateinit var loginBtn: Button
     private lateinit var signupLink: TextView
-    private lateinit var forgotPasswordLink: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         emailInput = findViewById(R.id.emailInput)
         passwordInput = findViewById(R.id.passwordInput)
         loginBtn = findViewById(R.id.loginBtn)
-        forgotPasswordLink = findViewById(R.id.forgotPasswordLink)
+
 
         loginBtn.setOnClickListener {
             val email = emailInput.text.toString().trim()
@@ -73,8 +72,6 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-        forgotPasswordLink.setOnClickListener {
-            startActivity(Intent(this, ResetPasswordActivity::class.java))
-        }
+
     }
 }
