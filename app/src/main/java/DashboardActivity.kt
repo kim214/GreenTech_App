@@ -15,17 +15,18 @@ import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttMessage
+
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 class DashboardActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDashboardBinding
 
     private lateinit var mqttClient: MqttClient
-    private val mqttBrokerUrl = "tcp://192.168.1.107:1883"
+    private val mqttBrokerUrl = "tcp://192.168.92.124:1883"
 
 
     private val temperatureTopic = "greenhouse/temperature"
-    private val soilMoistureTopic = "greenhouse/soilMoisturePercent" // Updated topic
+    private val soilMoistureTopic = "greenhouse/soilMoisturePercent" // Updated topic          /
     private val humidityTopic = "greenhouse/humidity"
     private val irrigationTopic = "greenhouse/irrigation"
     private val ventilationTopic = "greenhouse/ventilation"
