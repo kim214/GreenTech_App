@@ -1,6 +1,5 @@
 package com.example.greentechlogin
 
-import SupabaseClient
 import android.content.Intent
 import android.os.Bundle
 import android.util.Patterns
@@ -10,15 +9,10 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import com.airbnb.lottie.LottieAnimationView
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-
-// Data classes for the API request and response
-data class AuthRequest(val email: String, val password: String)
-data class UserResponse(val id: String, val email: String?)
-data class AuthResponse(val access_token: String?, val user: UserResponse?)
+import com.example.greentechlogin.auth.AuthManager
+import kotlinx.coroutines.launch
 
 class SignupActivity : AppCompatActivity() {
 
@@ -29,12 +23,14 @@ class SignupActivity : AppCompatActivity() {
     private lateinit var signupBtn: Button
     private lateinit var loginLink: TextView
     private lateinit var successAnim: LottieAnimationView
+    private lateinit var authManager: AuthManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_signup)
 
-        // Bind views
+        authManager = AuthManager(this)
+
         nameInput = findViewById(R.id.nameInput)
         emailInput = findViewById(R.id.emailInput)
         passwordInput = findViewById(R.id.passwordInput)
@@ -49,7 +45,6 @@ class SignupActivity : AppCompatActivity() {
             val password = passwordInput.text.toString()
             val confirmPassword = confirmPasswordInput.text.toString()
 
-            // Validate inputs
             if (name.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
                 Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -70,49 +65,43 @@ class SignupActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Call Supabase signup API
-            val supabaseService = SupabaseClient.authService
-            val call = supabaseService.signup(AuthRequest(email, password))
-
-            call.enqueue(object : Callback<AuthResponse> {
-                override fun onResponse(call: Call<AuthResponse>, response: Response<AuthResponse>) {
-                    if (response.isSuccessful) {
-                        // Show success animation
-                        successAnim.visibility = View.VISIBLE
-                        successAnim.playAnimation()
-
-                        Toast.makeText(
-                            this@SignupActivity,
-                            "Signup successful! Please check your email to confirm your account before logging in.",
-                            Toast.LENGTH_LONG
-                        ).show()
-
-                        // Delay to let animation play before switching screen
-                        successAnim.postDelayed({
-                            startActivity(Intent(this@SignupActivity, MainActivity::class.java))
-                            finish()
-                        }, 2000) // 2 seconds
-                    } else {
-                        Toast.makeText(
-                            this@SignupActivity,
-                            "Signup failed: ${response.errorBody()?.string()}",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
-                }
-
-                override fun onFailure(call: Call<AuthResponse>, t: Throwable) {
-                    Toast.makeText(
-                        this@SignupActivity,
-                        "Signup error: ${t.localizedMessage}",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            })
+            signupUser(name, email, password)
         }
 
         loginLink.setOnClickListener {
-            finish() // Go back to login screen
+            finish()
+        }
+    }
+
+    private fun signupUser(name: String, email: String, password: String) {
+        signupBtn.isEnabled = false
+
+        lifecycleScope.launch {
+            val result = authManager.signUp(email, password, name)
+
+            signupBtn.isEnabled = true
+
+            result.onSuccess {
+                successAnim.visibility = View.VISIBLE
+                successAnim.playAnimation()
+
+                Toast.makeText(
+                    this@SignupActivity,
+                    "Signup successful! Welcome to GreenTech!",
+                    Toast.LENGTH_LONG
+                ).show()
+
+                successAnim.postDelayed({
+                    startActivity(Intent(this@SignupActivity, DashboardActivity::class.java))
+                    finish()
+                }, 2000)
+            }.onFailure { error ->
+                Toast.makeText(
+                    this@SignupActivity,
+                    "Signup failed: ${error.message}",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
     }
 }

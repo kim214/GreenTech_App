@@ -1,31 +1,39 @@
 package com.example.greentechlogin
 
-import SupabaseClient
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import com.example.greentechlogin.auth.AuthManager
 import com.example.greentechlogin.databinding.ActivityMainBinding
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var authManager: AuthManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Inflate layout using ViewBinding
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // ✅ Handle deep link if any
+        authManager = AuthManager(this)
+
         intent?.data?.let { uri ->
             Log.d("DeepLink", "App opened via deep link: $uri")
+        }
+
+        lifecycleScope.launch {
+            if (authManager.isUserLoggedIn()) {
+                startActivity(Intent(this@MainActivity, DashboardActivity::class.java))
+                finish()
+                return@launch
+            }
         }
 
         binding.loginBtn.setOnClickListener {
@@ -44,39 +52,31 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, SignupActivity::class.java)
             startActivity(intent)
         }
+
+        binding.forgotPasswordLink.setOnClickListener {
+            val intent = Intent(this, ResetPasswordActivity::class.java)
+            startActivity(intent)
+        }
     }
 
     private fun loginUser(email: String, password: String) {
         binding.progressBar.visibility = View.VISIBLE
+        binding.loginBtn.isEnabled = false
 
-        val call = SupabaseClient.authService.login(AuthRequest(email, password))
-        call.enqueue(object : Callback<AuthResponse> {
-            override fun onResponse(call: Call<AuthResponse>, response: Response<AuthResponse>) {
-                binding.progressBar.visibility = View.GONE
+        lifecycleScope.launch {
+            val result = authManager.signIn(email, password)
 
-                if (response.isSuccessful) {
-                    val token = response.body()?.access_token
-                    token?.let {
-                        saveToken(it)
-                    }
-                    showToast("Login successful!")
-                    startActivity(Intent(this@MainActivity, DashboardActivity::class.java))
-                    finish()
-                } else {
-                    showToast("Login failed: ${response.errorBody()?.string()}")
-                }
+            binding.progressBar.visibility = View.GONE
+            binding.loginBtn.isEnabled = true
+
+            result.onSuccess {
+                showToast("Login successful!")
+                startActivity(Intent(this@MainActivity, DashboardActivity::class.java))
+                finish()
+            }.onFailure { error ->
+                showToast("Login failed: ${error.message}")
             }
-
-            override fun onFailure(call: Call<AuthResponse>, t: Throwable) {
-                binding.progressBar.visibility = View.GONE
-                showToast("Login error: ${t.localizedMessage}")
-            }
-        })
-    }
-
-    private fun saveToken(token: String) {
-        val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
-        prefs.edit().putString("access_token", token).apply()
+        }
     }
 
     private fun showToast(message: String) {
